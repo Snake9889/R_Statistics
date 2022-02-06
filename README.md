@@ -1,2 +1,2 @@
-# SMCM
-# Symbolic methods of computational mathematics.
+# R_Statistic
+# Using stat. methods in R.
