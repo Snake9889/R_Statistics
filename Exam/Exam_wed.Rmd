@@ -1,0 +1,179 @@
+---
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+setwd('d:\\R_Projects\\Exam') 
+df <- read.csv("Вячеслав_Сергеевич_Денисов.csv", encoding = 'UTF-8', sep = ',') 
+```
+
+Renaming colnames.
+
+```{r}
+df = df[colnames(df) != "X"] 
+colnames(df) <- c("Algebra", "Geometry", "IT", "History", "Geography", "Economics", "Biology", "Physics", "Chemistry", "SocialScience", "Russian", "Literature", "PE", "PhysicalWork", "Music", "Arts", "English", "Region", "Salary") 
+```
+
+Defining "Mean".
+```{r}
+df$Mean <- c(rep(0,1058))
+for (i in 1:17) {
+  print(i)
+  df$Mean <- df$Mean + df[i]
+}
+df$Mean = df$Mean/17
+```
+
+Salary~Mean corr.
+
+```{r}
+df$Mean = unlist(df$Mean)
+cor.test(df$Mean, df$Salary, method = "pearson")
+
+```
+
+
+
+```{r}
+library(dummies)
+df = dummy.data.frame(df)
+```
+
+Создаем dummies
+
+```{r}
+names(df)[18] <- paste("North")
+names(df)[19] <- paste("Center")
+names(df)[20] <- paste("South")
+```
+
+Forward with AIC
+Определите наиболее влияющие на зарплату предметы с помощью (прямого и обратного) метода отбора переменных по (AIC/p-value) для линейной регрессии.
+Отбор проводится по p-value.
+
+
+```{r}
+df_2 <- df
+subjects <- c()
+min.aic = 10000000
+
+while (ncol(df_2) > 5){
+  AIC.values <- c()
+  aic = 0
+  for (i in 1:(ncol(df_2) - 5)) {
+  
+    test.subj <- append(subjects, colnames(df_2[i]))
+    frmla = as.formula(paste("Salary ~ ", paste(test.subj, collapse="+"))) 
+    model.salary = lm(frmla, data = df)
+    AIC.values = append(AIC.values, AIC(model.salary))
+    test.subj <- c()
+  }
+  aic = min(AIC.values)
+  print(aic)
+  if (aic < min.aic){
+    subjects = append(subjects, colnames(df_2[which.min(AIC.values)]))
+    df_2 = df_2[colnames(df_2) != colnames(df_2[which.min(AIC.values)])]
+    min.aic = aic
+  }
+  else{
+    break
+  }
+}
+
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+summary(lm(frmla, data = df))
+```
+
+Backward method with p-value.
+
+```{r}
+
+subjects <- c()  
+for (i in 1:(ncol(df) - 5)) {
+  subjects <- append(subjects, colnames(df[i]))  
+}
+p = 1
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+model.salary = summary(lm(frmla, data = df))$coefficients[,4]
+
+while (p > 0.05){
+  subjects = subjects[-(which.max(model.salary) - 1)]
+  frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+"))) 
+  model.salary = summary(lm(frmla, data = df))$coefficients[,4]
+  p = max(model.salary) 
+}
+```
+
+
+
+```{r}
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+subjects_true <- subjects
+summary(lm(frmla, data = df))
+```
+
+Checking F-criteria.
+
+```{r}
+summary(lm(df$Salary ~ df$Algebra, data = df)) 
+summary(lm(df$Salary ~ df$Geometry, data = df))
+summary(lm(df$Salary ~ df$Geography, data = df))
+summary(lm(df$Salary ~ df$Biology, data = df))
+summary(lm(df$Salary ~ df$Physics, data = df))
+summary(lm(df$Salary ~ df$Chemistry, data = df))
+
+```
+
+```{r}
+subjects <- c()  
+for (i in 1:(ncol(df) - 5)) {
+  subjects <- append(subjects, colnames(df[i]))  
+}
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+all.model <- lm(frmla, data = df)
+
+maths <- c("Algebra","Geometry")
+sciences <- c("Physics", "Geography", "Chemistry", "Biology")
+
+subjects = subjects[ - which(subjects %in% maths)]
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+math.model <- lm(frmla, data = df)
+
+subjects <- c()  
+for (i in 1:(ncol(df) - 5)) {
+  subjects <- append(subjects, colnames(df[i]))  
+}
+subjects = subjects[ - which(subjects %in% sciences)]
+frmla = as.formula(paste("Salary ~ ", paste(subjects, collapse="+")))
+sciences.model <- lm(frmla, data = df)
+anova(all.model, math.model)
+anova(all.model, sciences.model)
+
+
+```
+
+
+
+Log regr.
+
+```{r}
+i = 0
+df$FTSalary <- c(rep(0,1058))
+for (i in 1:length(df$Salary)) {
+  if (df$Salary[i] > 50000){
+    df$FTSalary[i] = 1  
+    }
+}
+```
+
+```{r}
+frmla = as.formula(paste("FTSalary ~ ", paste(subjects_true, collapse="+"))) 
+summary(glm(frmla, family = 'gaussian', data = df))
+```
+
+```{?}
+
+```

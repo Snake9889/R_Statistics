@@ -1,0 +1,194 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(MASS)
+df = immer
+wilcox.test(immer$Y1, immer$Y2, paired=T, conf.int = T)
+```
+
+
+```{r}
+Del.zero <- function(vect){
+  new.vect <- c()
+  for (i in 1:length(vect)){
+    if (vect[i] != 0){
+      new.vect = append(new.vect, vect[i])
+    }
+  }
+  return(new.vect)
+}
+```
+
+
+
+Self-made Wilcoxon test
+
+```{r}
+Wilcox <- function(diff.data){
+  t = 0
+  #Q = 0
+  diff.data = Del.zero(diff.data)
+  rang.sign <- c(rep(1, length(diff.data)))
+  for (i in 1:length(diff)){
+    if (diff.data[i] < 0)
+    {
+      diff.data[i] = diff.data[i]*(-1)
+      rang.sign[i] = -1
+    }
+  }
+  rang.sign = rang.sign[order(diff.data)]
+  diff.data = diff.data[order(diff.data)]
+  S = 0
+  for (i in 1:length(diff.data)){
+    if (rang.sign[i] > 0)
+    {
+      S = S + i
+    }
+  } 
+  N = length(diff.data)
+  t = (S - N*(N+1)/4)/sqrt(N*(N+1)*(2*N+1)/24)
+  #Z_T = (t - ET)/sqrt(DT)
+  p = 2*pnorm(-abs(t))
+  #Q = qnorm(0.975, mean = 0, sd = 1)
+  return(p)
+  
+}
+```
+
+
+```{r}
+df$dif = df$Y1 - df$Y2
+diff <- c()
+diff = df$dif
+(W = Wilcox(diff))
+
+```
+
+```{r}
+x <- rnorm(100)
+y <- rnorm(100)
+wilcox.test(x, y, conf.int = T, exact = T)
+```
+
+
+
+
+Self-made MWW-test
+
+```{r}
+MWW <- function(data1, data2){
+  data <- c(data1, data2)
+  group <- factor(c(rep("A",length(data1)), rep("B",length(data2))), levels=c("A","B"))
+  final_ranked <- rank(data)
+  R <- tapply(final_ranked, group, sum)
+  N <- length(data)
+  # Expected R = n*(N+1)/2
+  nA <- sum(group=="A")
+  nB <- N - nA
+  # if (nA <= nB){
+  #   nl = nA
+  # }
+  # else{
+  #   nl = nB
+  # }
+  Exp_R <- nA*nB/2
+  # Standard error
+  SE <- sqrt(nA*nB*(N+1)/12)
+  # Z-score for group
+  # if (nA <= nB){
+  #   Rl = R["A"]
+  # }
+  # else{
+  #   Rl = R["B"]
+  # }
+  UA = nA*nB + nA*(nA+1)/2 - R["A"]
+  UB = nA*nB + nB*(nB+1)/2 - R["B"]
+  Um = min(c(UA, UB))
+  Z_A <- (Um - Exp_R)/SE
+  pvalue = 2*pnorm(-abs(Z_A))
+  return(pvalue)
+}
+
+```
+
+```{r}
+(P = MWW(x, y))
+```
+
+Hodges–Lehmann estimator
+```{r}
+HL <- function(data1, data2){
+  hl <- c()
+  i = 0
+  j = 0
+  for (i in 1:length(data1)){
+    for (j in 1:length(data2)){
+      hl = append(hl, data1[i] - data2[j])
+    }
+  }
+  Teta = median(hl)
+}
+```
+
+```{r}
+(Hod.Leh = HL(x,y))
+```
+
+```{r}
+CI <- function(data1, data2){
+  z1 = qnorm(0.025)
+  z2 = qnorm(0.975)
+  data <- c(data1, data2)
+  group <- factor(c(rep("A",length(data1)), rep("B",length(data2))), levels=c("A","B"))
+  final_ranked <- rank(data)
+  R <- tapply(final_ranked, group, sum)
+  N <- length(data)
+  # Expected R = n*(N+1)/2
+  nA <- sum(group=="A")
+  nB <- N - nA
+  # if (nA <= nB){
+  #   nl = nA
+  # }
+  # else{
+  #   nl = nB
+  # }
+  # if (nA <= nB){
+  #   Rl = R["A"]
+  # }
+  # else{
+  #   Rl = R["B"]
+  # }
+  Exp_R <- nA*nB/2
+  # Standard error
+  SE <- sqrt(nA*nB*(N+1)/12)
+  UA = nA*nB + nA*(nA+1)/2 - R["A"]
+  UB = nA*nB + nB*(nB+1)/2 - R["B"]
+  Um = min(UA, UB)
+  U.calc = -z1*SE + Exp_R
+  U.calc2 = nA*nB - U.calc
+  U.calc = min(U.calc, U.calc2)
+  #RL = (U.calc - Um)
+  if (UA < UB){
+    Rf = -1*U.calc + nA*nB + nA*(nA+1)/2
+    delta = (Rf- R["A"])/nA
+  }
+  else{
+    Rf = -1*U.calc + nA*nB + nB*(nB+1)/2
+    delta = (Rf- R["B"])/nB
+  }
+  # R2 = -z2*SE + Exp_R
+  # RR = (R2 - Rl)/nl
+  # vect <- c(RL, RR)
+  return(delta)
+}
+
+```
+
+```{r}
+(Border = CI(x, y))
+(Baues.delta = Border - Hod.Leh)
+```
+
